@@ -18,7 +18,8 @@
 		"isomorphic-fetch": "^3.0.0",
 		"next": "12.1.5",
 		"react": "18.0.0",
-		"react-dom": "18.0.0"
+		"react-dom": "18.0.0",
+		"secretjs": "^1.2.0-beta.47"
 	},
 	"devDependencies": {
 		"eslint": "^8.13.0",

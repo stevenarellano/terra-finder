@@ -1,33 +1,27 @@
 import { useState, useEffect } from "react";
-import { Coins, LCDClient, MnemonicKey } from "@terra-money/terra.js";
-
 import {
 	Box,
 	Flex,
 	Table,
 	Thead,
 	Tbody,
-	Tfoot,
 	Tr,
 	Th,
 	Button,
 	Td,
-	TableCaption,
 	TableContainer,
-	useClipboard,
 } from "@chakra-ui/react";
 import axios from "axios";
+import Missing from "./missing";
 
 export default function TransactionsEle({ accountHash }) {
-	const terra = new LCDClient({
-		URL: "https://lcd.terra.dev",
-		chainId: "columbus-5",
-	});
 	const [tx, setTx] = useState([]);
 	const [offset, setOffset] = useState(0);
 	const [remaining, setRemaining] = useState(true);
 	const [loading, setLoading] = useState(true);
-	async function getTXs(walletAddress, offsetId) {
+	const [isNew, setNew] = useState(true);
+
+	async function getTXs(walletAddress, offsetId, first) {
 		setLoading(true);
 		axios
 			.get(
@@ -35,44 +29,41 @@ export default function TransactionsEle({ accountHash }) {
 			)
 			.then((res) => {
 				setLoading(false);
+				setNew(false);
 				const txArr = res.data.txs;
-				setTx(tx.concat(txArr));
-				setOffset(txArr[txArr.length - 1].id);
+				if (first) {
+					setTx(txArr);
+				} else {
+					setTx(tx.concat(txArr));
+				}
+
+				if (txArr[txArr.length - 1]) {
+					setOffset(txArr[txArr.length - 1].id);
+				}
+
 				if (txArr.length !== 10) {
 					setRemaining(false);
 				}
 			});
 	}
-	const [toCopy, setToCopy] = useState("");
-	const { hasCopied, onCopy } = useClipboard(toCopy);
-	const copyText = (e) => {
-		setToCopy(e.target.innerHTML);
-		onCopy();
-	};
 
 	useEffect(() => {
-		getTXs(accountHash, offset);
-	}, []);
+		setOffset(0);
+		setRemaining(true);
+		setNew(true);
+		getTXs(accountHash, 0, true);
+	}, [accountHash]);
 
 	const txEles = tx.map((transaction) => (
 		<Tr key={tx.indexOf(transaction)}>
-			<Td
-				onClick={(e) => {
-					copyText(e);
-				}}
-				_hover={{
-					textDecoration: "underline",
-				}}
-				_active={{
-					color: "blue",
-				}}
-				maxW='10rem'
-				textOverflow='ellipsis'
-				whiteSpace='nowrap'
-				cursor='pointer'
-				overflow='hidden'
-				variant='link'>
-				{transaction.txhash}
+			<Td display='flex' align='center' maxW='15rem' variant='link'>
+				<Box
+					fontSize='.75rem'
+					whiteSpace='nowrap'
+					cursor='pointer'
+					overflowX='scroll'>
+					{transaction.txhash}
+				</Box>
 			</Td>
 			<Td>{transaction.tx.type}</Td>
 			<Td isNumeric>{transaction.height}</Td>
@@ -81,8 +72,6 @@ export default function TransactionsEle({ accountHash }) {
 		</Tr>
 	));
 
-	const wallet = terra.wallet(accountHash);
-
 	return (
 		<Flex
 			borderRadius='.25rem'
@@ -90,38 +79,44 @@ export default function TransactionsEle({ accountHash }) {
 			my='2rem'
 			flexDir='column'>
 			<Box
+				color='#0B3693'
+				fontSize='1.25rem'
 				bg='#EEF4FE'
 				borderBottom='solid #D9DEF0 .1rem'
 				padding=' .75rem .75rem .75rem 1.5rem'>
 				Transactions
 			</Box>
-			<TableContainer>
-				<Table variant='simple'>
-					<Thead>
-						<Tr>
-							<Th>Tx Hash</Th>
-							<Th>Type</Th>
-							<Th isNumeric>Block</Th>
-							<Th>Timestamp</Th>
-							<Th isNumeric>Fee</Th>
-						</Tr>
-					</Thead>
-					<Tbody>{txEles}</Tbody>
-				</Table>
-				{remaining ? (
-					<Button
-						isLoading={loading}
-						loadingText='Loading Transactions'
-						onClick={() => getTXs(accountHash, offset)}
-						variant='ghost'
-						cursor='pointer'
-						justify='center'
-						align='center'
-						w='100%'>
-						More
-					</Button>
-				) : null}
-			</TableContainer>
+			{txEles.length !== 0 && !isNew ? (
+				<TableContainer>
+					<Table variant='simple'>
+						<Thead>
+							<Tr>
+								<Th>Tx Hash</Th>
+								<Th>Type</Th>
+								<Th isNumeric>Block</Th>
+								<Th>Timestamp</Th>
+								<Th isNumeric>Fee</Th>
+							</Tr>
+						</Thead>
+						<Tbody>{txEles}</Tbody>
+					</Table>
+					{remaining ? (
+						<Button
+							isLoading={loading}
+							loadingText='Loading Transactions'
+							onClick={() => getTXs(accountHash, offset, false)}
+							variant='ghost'
+							cursor='pointer'
+							justify='center'
+							align='center'
+							w='100%'>
+							More
+						</Button>
+					) : null}
+				</TableContainer>
+			) : (
+				<Missing which='transaction' />
+			)}
 		</Flex>
 	);
 }
